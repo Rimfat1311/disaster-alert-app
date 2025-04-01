@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { FaFire, FaAmbulance, FaBell, FaWind } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
-
+import AlertCard from './component/AlertCard';
+import NotificationButton from './component/NotificationButton';
 // Type definitions
 type Alert = {
   id: number;
@@ -69,6 +70,7 @@ export default function Home() {
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-red-600 dark:text-red-400">DisasterAlert</h1>
         <div className="flex gap-3">
+          <NotificationButton />
           <button 
             onClick={() => document.documentElement.classList.toggle('dark')}
             className="p-2 rounded-full bg-gray-200 dark:bg-gray-700"
@@ -95,7 +97,7 @@ export default function Home() {
           <span className="bg-red-500 w-3 h-3 rounded-full animate-pulse"></span>
           LIVE ALERTS
         </h2>
-        
+{/*         
         {alerts.map((alert) => (
           <motion.div 
             key={alert.id}
@@ -121,7 +123,15 @@ export default function Home() {
               Show Safe Route
             </button>
           </motion.div>
-        ))}
+        ))} */}
+
+
+
+{alerts.map((alert) => (
+    <AlertCard key={alert.id} alert={{ ...alert, onShowRoute: handleShowRoute }} />
+  ))} 
+
+
       </div>
 
       {/* Interactive Map */}
