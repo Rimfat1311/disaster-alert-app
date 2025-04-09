@@ -82,3 +82,4 @@ useEffect(() => {
     </div>
   );
 }
+// <li className="text-sm p-2">No new alerts</li>
