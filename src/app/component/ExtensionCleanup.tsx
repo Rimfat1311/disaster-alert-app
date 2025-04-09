@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 
 export default function ExtensionCleanup() {
-  useEffect(() => {
+  useEffect(() => {         
     // Remove Grammarly-specific attributes
     document.body.removeAttribute('data-new-gr-c-s-check-loaded');
     document.body.removeAttribute('data-gr-ext-installed');

@@ -4,34 +4,6 @@ export default function NotificationButton() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<string[]>([]);
 
-//   useEffect(() => {
-//     const fetchAlerts = async () => {
-//       try {
-//         const response = await fetch("https://www.gdacs.org/xml/rss.xml");
-//         const textData = await response.text();
-
-//         // Convert XML to JSON
-//         const parser = new DOMParser();
-//         const xmlDoc = parser.parseFromString(textData, "text/xml");
-//         const items = xmlDoc.getElementsByTagName("item");
-
-//         const newAlerts = [];
-//         for (let i = 0; i < Math.min(items.length, 5); i++) {
-//           const title = items[i].getElementsByTagName("title")[0].textContent || "";
-//           newAlerts.push(`🚨 ${title}`);
-//         }
-
-//         setNotifications(newAlerts);
-//       } catch (error) {
-//         console.error("Error fetching alerts:", error);
-//       }
-//     };
-
-//     fetchAlerts();
-//     const interval = setInterval(fetchAlerts, 10000); // Refresh every 10 seconds
-
-//     return () => clearInterval(interval);
-//   }, []);
 
 
 

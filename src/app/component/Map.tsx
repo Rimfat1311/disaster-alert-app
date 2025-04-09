@@ -1,104 +1,120 @@
 "use client";
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
-import { memo, useState, useEffect } from 'react';
+import { GoogleMap, LoadScript, Marker, DirectionsRenderer } from '@react-google-maps/api';
+import { memo, useState, useEffect, useCallback } from 'react';
 
-// Define types for better type safety
-type LatLng = {
-  lat: number;
-  lng: number;
-};
+type LatLng = { lat: number; lng: number };
+type DisasterType = 'fire' | 'tornado' | 'flood' | 'user' | 'safe';
 
-type DisasterType = 'fire' | 'tornado' | 'flood' | string;
-
-type MarkerData = {
-  position: LatLng;
-  type: DisasterType;
-  id: number;
-  severity?: number; // 1-5 scale
+type MarkerData = { 
+  position: LatLng; 
+  type: DisasterType; 
+  id: number; 
+  severity?: string;
 };
 
 interface MapProps {
   center: LatLng;
   zoom: number;
   markers: MarkerData[];
+  userLocation: LatLng | null;
+  safeDestination: LatLng | null;
+  showSafeRoute?: boolean;
 }
 
-const containerStyle = {
-  width: '100%',
-  height: '100%'
-};
+const containerStyle = { width: '100%', height: '100%' };
 
 const DISASTER_ICONS: Record<string, string> = {
-  fire: '🔥',
-  tornado: '🌪️',
-  flood: '🌊',
+  fire: '🔥', 
+  tornado: '🌪️', 
+  flood: '🌊', 
+  user: '📍', 
+  safe: '🟢',
   default: '⚠️'
 };
 
 const DISASTER_COLORS: Record<string, string> = {
-  fire: '#FF5722',
-  tornado: '#9C27B0',
-  flood: '#2196F3',
+  fire: '#FF5722', 
+  tornado: '#9C27B0', 
+  flood: '#2196F3', 
+  user: '#4285F4',
+  safe: '#0F9D58',
   default: '#FFC107'
 };
 
-function MapComponent({ center, zoom, markers }: MapProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+function MapComponent({ 
+  center, 
+  zoom, 
+  markers, 
+  userLocation, 
+  safeDestination,
+  showSafeRoute = false 
+}: MapProps) {
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
+  const calculateRoute = useCallback(() => {
+    if (!mapLoaded || !userLocation || !safeDestination || !window.google.maps) return;
+
+    const directionsService = new window.google.maps.DirectionsService();
+    
+    // Add waypoints or avoid areas if disaster data is available
+    const waypoints = markers
+      .filter(marker => marker.type !== 'user' && marker.type !== 'safe')
+      .map(marker => ({
+        location: marker.position,
+        stopover: false // Avoid stopping at disaster points
+      }));
+
+    directionsService.route(
+      {
+        origin: userLocation,
+        destination: safeDestination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        waypoints: waypoints.length > 0 ? waypoints : undefined,
+        optimizeWaypoints: true, // Optimize route if waypoints are used
+        avoidHighways: false, // Optional: adjust based on disaster type
+        avoidTolls: false,
+      },
+      (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          setDirections(result);
+        } else {
+          console.error('Directions request failed due to ' + status);
+          setDirections(null); // Clear directions on failure
+        }
+      }
+    );
+  }, [userLocation, safeDestination, mapLoaded, markers]);
 
   useEffect(() => {
-    if (!apiKey) {
-      setLoadError('Google Maps API key is missing');
+    if (showSafeRoute && userLocation && safeDestination) {
+      calculateRoute();
+    } else {
+      setDirections(null); // Clear route when not showing
     }
-  }, [apiKey]);
+  }, [showSafeRoute, userLocation, safeDestination, calculateRoute]);
 
-  if (loadError) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-red-100 text-red-700 p-4">
-        Error: {loadError}
-      </div>
-    );
-  }
-
-  if (!apiKey) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-yellow-100 text-yellow-700 p-4">
-        Warning: Google Maps API key not configured
-      </div>
-    );
-  }
-
-  const getScaledSize = (severity: number = 3) => {
-    // Scale marker size based on severity (1-5)
-    const baseSize = 32;
-    const scaleFactor = 0.2 * severity;
-    return new google.maps.Size(baseSize * scaleFactor, baseSize * scaleFactor);
-  };
-
-  const getCustomIcon = (type: DisasterType, severity: number = 3) => {
-    const color = DISASTER_COLORS[type] || DISASTER_COLORS.default;
-    const size = getScaledSize(severity);
-    
+  const getCustomIcon = (type: DisasterType) => {
     return {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: color,
+      path: window.google.maps.SymbolPath.CIRCLE,
+      fillColor: DISASTER_COLORS[type] || DISASTER_COLORS.default,
       fillOpacity: 0.8,
       strokeColor: '#FFF',
       strokeWeight: 2,
-      scale: 10 * (0.2 * severity),
+      scale: type === 'user' ? 8 : type === 'safe' ? 6 : 10,
     };
   };
 
   return (
     <div className="relative h-full w-full">
-      <LoadScript
+      <LoadScript 
         googleMapsApiKey={apiKey}
-        loadingElement={<div className="h-full w-full bg-gray-200 animate-pulse" />}
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setLoadError('Failed to load Google Maps')}
+        libraries={['places']}
+        onLoad={() => setMapLoaded(true)}
+        onError={(e) => console.error('LoadScript error:', e)}
       >
-        {isLoaded ? (
+        {mapLoaded ? (
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
@@ -109,13 +125,7 @@ function MapComponent({ center, zoom, markers }: MapProps) {
               fullscreenControl: false,
               minZoom: 4,
               maxZoom: 18,
-              styles: [
-                {
-                  featureType: "poi",
-                  elementType: "labels",
-                  stylers: [{ visibility: "off" }]
-                }
-              ]
+              styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
             }}
           >
             {markers.map((marker) => (
@@ -128,17 +138,28 @@ function MapComponent({ center, zoom, markers }: MapProps) {
                   fontSize: '16px',
                   color: '#FFF'
                 }}
-                icon={getCustomIcon(marker.type, marker.severity)}
-                onClick={() => {
-                  // You can add click handler here
-                  console.log('Marker clicked:', marker);
-                }}
+                icon={getCustomIcon(marker.type)}
               />
             ))}
+            
+            {directions && (
+              <DirectionsRenderer
+                directions={directions}
+                options={{
+                  polylineOptions: { 
+                    strokeColor: '#0F9D58', 
+                    strokeWeight: 5,
+                    strokeOpacity: 0.7,
+                    zIndex: 1
+                  },
+                  suppressMarkers: true
+                }}
+              />
+            )}
           </GoogleMap>
         ) : (
-          <div className="h-full w-full bg-gray-200 animate-pulse flex items-center justify-center">
-            <p>Loading map...</p>
+          <div className="h-full w-full flex items-center justify-center bg-gray-100">
+            <p>Loading Google Maps...</p>
           </div>
         )}
       </LoadScript>
