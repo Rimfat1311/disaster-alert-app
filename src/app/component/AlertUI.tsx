@@ -57,18 +57,17 @@
 
 "use client";
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
-import { useState } from 'react';
 
-type MapInstance = google.maps.Map;
+interface MarkerData {
+  position: google.maps.LatLngLiteral;
+  type: string;
+  id: number;
+}
 
 interface MapProps {
   center: google.maps.LatLngLiteral;
   zoom: number;
-  markers: {
-    position: google.maps.LatLngLiteral;
-    type: string;
-    id: number;
-  }[];
+  markers: MarkerData[];
 }
 
 const containerStyle = {
@@ -77,24 +76,12 @@ const containerStyle = {
 };
 
 export default function MapComponent({ center, zoom, markers }: MapProps) {
-  const [map, setMap] = useState<MapInstance | null>(null);
-
-  const onLoad = (mapInstance: MapInstance) => {
-    setMap(mapInstance);
-  };
-
-  const onUnmount = () => {
-    setMap(null);
-  };
-
   return (
     <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
         zoom={zoom}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
       >
         {markers.map((marker) => (
           <Marker
